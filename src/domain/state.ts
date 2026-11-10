@@ -65,7 +65,13 @@ export type Action =
   | { type: 'doubtNotYet'; id: string }
   | { type: 'postponeDoubt'; id: string; remindAt: number }
   | { type: 'reopenDoubt'; id: string }
-  | { type: 'saveGptAnswer'; id: string; text: string; at: string }
+  | {
+      type: 'saveGptAnswer'
+      id: string
+      text: string
+      at: string
+      source?: 'chatgpt' | 'claude'
+    }
   | { type: 'deleteDoubt'; id: string }
   | {
       type: 'saveNote'
@@ -281,7 +287,12 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       if (!text) return state
       return updateDoubt(state, action.id, (d) => ({
         ...d,
-        gptAnswer: { text, at: action.at, mark: progressMark(state) },
+        gptAnswer: {
+          text,
+          at: action.at,
+          mark: progressMark(state),
+          ...(action.source ? { source: action.source } : {}),
+        },
       }))
     }
     case 'deleteDoubt': {

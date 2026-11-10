@@ -23,6 +23,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # A função da Vercel (server/) entra no typecheck do projeto.
+      - run: npm ci --prefix server
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

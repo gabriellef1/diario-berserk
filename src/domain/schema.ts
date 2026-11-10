@@ -59,6 +59,8 @@ export const writtenSchema = z.object({
   text: z.string().trim().min(1).max(4000),
   at: isoDate,
   mark: markSchema,
+  /** De onde veio a resposta guardada (só nas respostas de IA). */
+  source: z.enum(['chatgpt', 'claude']).optional(),
 })
 
 export const doubtSchema = z.object({

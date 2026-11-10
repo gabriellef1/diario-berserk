@@ -5,6 +5,7 @@ import { nowIso } from '@/domain/dates'
 import { buildPrompt } from '@/domain/prompt'
 import { IconCheck, IconExternal } from '@/icons'
 import { useDiary, useDiaryState } from '@/store/DiaryContext'
+import { AskClaude } from './AskClaude'
 import { TextArea } from './TextArea'
 
 async function copyText(text: string): Promise<boolean> {
@@ -64,7 +65,7 @@ export function AskWithoutSpoiler({
   function saveAnswer() {
     if (!doubtId || !answer.trim()) return
     dispatch(
-      { type: 'saveGptAnswer', id: doubtId, text: answer, at: nowIso() },
+      { type: 'saveGptAnswer', id: doubtId, text: answer, at: nowIso(), source: 'chatgpt' },
       { toast: 'Resposta guardada', undoable: true },
     )
     setAnswer('')
@@ -73,6 +74,12 @@ export function AskWithoutSpoiler({
 
   return (
     <div className="flex flex-col gap-4">
+      <AskClaude question={question} doubtId={doubtId} />
+      {config.askUrl && (
+        <p className="border-t border-line pt-4 text-sm font-semibold text-ink-2">
+          Ou pelo ChatGPT:
+        </p>
+      )}
       <div>
         <p className="mb-1.5 text-sm font-semibold text-ink-2">A pergunta que vai pro ChatGPT</p>
         <p

@@ -37,6 +37,8 @@ export const config = {
   giftMessage: '',
   signature: 'feito pela Gabs',
   chatgptUrl: 'https://chatgpt.com/',
+  /** Função na Vercel que chama o Claude. Vazio = botão do Claude não aparece. */
+  askUrl: 'https://diario-berserk-api.vercel.app/api/ask',
   /** "Faltam ~N páginas" aparece abaixo deste limite. */
   lowPagesWarning: 40,
   /** Dia do aniversário de namoro (MM-DD). A entrada mostra a mensagem nesse dia. */

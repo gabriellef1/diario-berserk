@@ -163,7 +163,11 @@ function DoubtItem({
       )}
       {doubt.gptAnswer && (
         <div className="rounded-control border border-line bg-bg p-3">
-          <p className="text-sm font-semibold text-ink-2">Resposta do ChatGPT que você colou</p>
+          <p className="text-sm font-semibold text-ink-2">
+            {doubt.gptAnswer.source === 'claude'
+              ? 'Resposta do Claude que você guardou'
+              : 'Resposta do ChatGPT que você colou'}
+          </p>
           <p className="mt-1 whitespace-pre-wrap text-ink-2">{doubt.gptAnswer.text}</p>
         </div>
       )}

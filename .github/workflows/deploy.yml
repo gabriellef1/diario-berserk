@@ -36,6 +36,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # A função da Vercel (server/) entra no typecheck do projeto.
+      - run: npm ci --prefix server
       - run: npm run build
       - uses: actions/configure-pages@v5
         with:
