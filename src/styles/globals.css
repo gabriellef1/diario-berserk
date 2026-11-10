@@ -1,0 +1,135 @@
+@import 'tailwindcss';
+
+/*
+ * Design system do Diário (feito a quatro mãos, Claude + Codex).
+ * Contrastes medidos sobre --color-bg e --color-raised: ver /design.
+ */
+@theme {
+  --color-bg: #141210;
+  --color-surface: #1e1a16;
+  --color-raised: #29231d;
+  --color-line: #3a322a;
+  --color-line-strong: #897965;
+  --color-ink: #f2e8d5;
+  --color-ink-2: #c0b39e;
+  --color-blood: #862e32;
+  --color-blood-hover: #9a3439;
+  --color-blood-text: #ed8580;
+  --color-ember: #dca45c;
+  --color-gold: #bfa269;
+
+  --font-display: 'Grenze Gotisch', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'Archivo', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --text-title: 2.25rem;
+  --text-title--line-height: 2.625rem;
+  --text-heading: 1.75rem;
+  --text-heading--line-height: 2.125rem;
+  --text-number: 2rem;
+  --text-number--line-height: 2.25rem;
+
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --radius-dialog: 8px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-bg);
+    /* Textura original: fibras de papel estáticas a 2% + vinheta nas bordas. */
+    background-image:
+      radial-gradient(ellipse at 50% 0%, transparent 55%, rgb(0 0 0 / 0.35) 100%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%23f2e8d5' stroke-opacity='0.02' stroke-width='1'%3E%3Cpath d='M8 20c30-6 52 4 80-2s44-8 64 2'/%3E%3Cpath d='M0 74c24 4 46-6 70 0s52 8 90-4'/%3E%3Cpath d='M12 128c34-8 60 6 92-2s40-2 56 4'/%3E%3Cpath d='M40 0c4 30-6 50 2 80s-2 56 4 80'/%3E%3Cpath d='M118 0c-6 34 4 60-2 90s6 44 0 70'/%3E%3C/g%3E%3C/svg%3E");
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+  }
+
+  /* Sem setinhas do navegador nos campos numéricos: o teclado numérico basta. */
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  ::selection {
+    background: var(--color-blood);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  /* Cantos de metal: borda funcional e um "rebite" discreto fora do texto. */
+  .riveted {
+    position: relative;
+  }
+  .riveted::before,
+  .riveted::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--color-line-strong);
+    box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.4);
+  }
+  .riveted::before {
+    left: 8px;
+  }
+  .riveted::after {
+    right: 8px;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility pb-nav {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
