@@ -1,96 +1,16 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { getEdition } from '@/config'
 import { Button, NumberField, PageHeader, Segmented, Sheet, Stat } from '@/components/ui'
-import { formatDate, nowIso } from '@/domain/dates'
+import { nowIso } from '@/domain/dates'
 import { isVolumeUnlocked } from '@/domain/gates'
 import { avgDaysPerVolume, finishedCount, history, pagesPerDay } from '@/domain/stats'
-import { VolumeNotes } from '@/features/VolumeNotes'
 import { IconChevron, Milestone } from '@/icons'
 import { cn } from '@/lib/cn'
 import { useDiary, useDiaryState } from '@/store/DiaryContext'
 
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`
-}
-
-function VolumeSheet({ volume, onClose }: { volume: number | null; onClose: () => void }) {
-  const state = useDiaryState()
-  const { dispatch } = useDiary()
-  const [pages, setPages] = useState('')
-  // Gate: o detalhe só existe pra volumes já alcançados.
-  const unlocked = volume !== null && isVolumeUnlocked(volume, state)
-  const h = unlocked ? history(state).find((x) => x.volume === volume) : undefined
-  const total = volume !== null ? state.volumes[String(volume)]?.pagesTotal : undefined
-
-  function savePages() {
-    if (volume === null) return
-    const n = Number(pages)
-    dispatch(
-      {
-        type: 'setPagesTotal',
-        volume,
-        pagesTotal: pages === '' || !Number.isInteger(n) || n < 1 ? undefined : n,
-      },
-      { toast: 'Total de páginas salvo' },
-    )
-    setPages('')
-  }
-
-  return (
-    <Sheet open={unlocked} onClose={onClose} title={volume !== null ? `Volume ${volume}` : ''}>
-      {h && (
-        <dl className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm font-semibold text-ink-2">Começou</dt>
-            <dd className="mt-0.5 font-semibold">
-              {h.startedAt ? formatDate(h.startedAt) : 'antes do diário'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-semibold text-ink-2">Terminou</dt>
-            <dd className="mt-0.5 font-semibold">
-              {h.finishedAt
-                ? formatDate(h.finishedAt)
-                : volume === state.reader.currentVolume && !state.reader.caughtUp
-                  ? 'lendo agora'
-                  : 'antes do diário'}
-            </dd>
-          </div>
-          {h.days !== undefined && (
-            <div>
-              <dt className="text-sm font-semibold text-ink-2">Tempo</dt>
-              <dd className="mt-0.5 font-semibold">{plural(h.days, 'dia', 'dias')}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="text-sm font-semibold text-ink-2">Páginas</dt>
-            <dd className="mt-0.5 font-semibold">{total ?? 'não informado'}</dd>
-          </div>
-        </dl>
-      )}
-      <form
-        className="mt-6 flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          savePages()
-        }}
-      >
-        <NumberField
-          className="flex-1"
-          label="Total de páginas do volume"
-          hint="Opcional. Serve pro aviso de compra e pra barra de progresso."
-          min={1}
-          value={pages}
-          placeholder={total ? String(total) : 'ex.: 224'}
-          onChange={(e) => setPages(e.target.value)}
-        />
-        <Button type="submit" className="mb-[1.625rem]">
-          Salvar
-        </Button>
-      </form>
-      {unlocked && volume !== null && <VolumeNotes volume={volume} />}
-    </Sheet>
-  )
 }
 
 function FixProgressSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -165,7 +85,6 @@ function FixProgressSheet({ open, onClose }: { open: boolean; onClose: () => voi
 export function Jornada() {
   const state = useDiaryState()
   const edition = getEdition(state.editionId)
-  const [openVolume, setOpenVolume] = useState<number | null>(null)
   const [fixOpen, setFixOpen] = useState(false)
   const cur = state.reader.currentVolume
   const avg = avgDaysPerVolume(state)
@@ -261,9 +180,8 @@ export function Jornada() {
               {locked ? (
                 <div className="flex min-h-14 items-center gap-3 py-1 opacity-80">{content}</div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setOpenVolume(v)}
+                <Link
+                  to={`/volume/${v}`}
                   className={cn(
                     'flex min-h-16 w-full items-center gap-3 rounded-card py-1 pr-3 text-left transition-colors duration-150 hover:bg-surface',
                     current && 'bg-surface ring-1 ring-gold/60',
@@ -271,7 +189,7 @@ export function Jornada() {
                 >
                   {content}
                   <IconChevron size={20} className="text-ink-2" />
-                </button>
+                </Link>
               )}
             </li>
           )
@@ -311,7 +229,6 @@ export function Jornada() {
         </section>
       )}
 
-      <VolumeSheet volume={openVolume} onClose={() => setOpenVolume(null)} />
       {fixOpen && <FixProgressSheet open onClose={() => setFixOpen(false)} />}
     </>
   )

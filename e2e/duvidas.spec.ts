@@ -5,7 +5,7 @@ const at = '2026-11-01T15:00:00.000Z'
 
 /** Estado v2 pronto: volume 2, página 87, volumes 1 e 2 na estante. */
 const seed = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   editionId: 'panini-luxo',
   createdAt: at,
   reader: {
@@ -29,6 +29,10 @@ const seed = {
     'estante-5',
     'estante-20',
   ],
+  chaptersRead: {},
+  chapterEdits: {},
+  settings: { hideSummaries: false, intro: 'off', atmosphere: true },
+  intro: {},
 }
 
 test('dúvida que volta + ponte com o ChatGPT', async ({ page, context }) => {

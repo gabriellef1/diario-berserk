@@ -133,3 +133,71 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- A forja (entrada) ---------- */
+@keyframes heat-sweep {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+@keyframes forge-strike {
+  0% {
+    text-shadow:
+      0 0 18px rgb(242 232 213 / 0.9),
+      0 0 42px rgb(224 122 46 / 0.8);
+  }
+  100% {
+    text-shadow:
+      0 0 0 rgb(242 232 213 / 0),
+      0 0 0 rgb(224 122 46 / 0);
+  }
+}
+@keyframes forge-cooling {
+  0% {
+    color: #e2b56a;
+    text-shadow: 0 0 22px rgb(224 122 46 / 0.55);
+  }
+  100% {
+    color: #bfa269;
+    text-shadow: 0 0 0 rgb(224 122 46 / 0);
+  }
+}
+@keyframes smoke-rise {
+  0% {
+    stroke-dashoffset: 140;
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  25% {
+    opacity: 0.28;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+.forge-hot {
+  background-image: linear-gradient(100deg, #dca45c 0%, #f2e8d5 35%, #e07a2e 60%, #dca45c 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: heat-sweep 1.6s linear infinite;
+}
+.forge-cold {
+  color: #bfa269;
+}
+.forge-strike {
+  animation: forge-strike 280ms ease-out both;
+}
+.forge-cooling {
+  animation: forge-cooling 700ms ease-out both;
+}
+.forge-smoke path {
+  stroke-dasharray: 140;
+  animation: smoke-rise 1.4s ease-out both;
+}

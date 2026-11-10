@@ -15,6 +15,7 @@ import {
 } from '@/icons'
 import { cn } from '@/lib/cn'
 import { useDiary } from '@/store/DiaryContext'
+import { useUi } from '@/store/UiContext'
 
 const nav = [
   { to: '/', label: 'Hoje', icon: IconCandle, end: true },
@@ -124,6 +125,7 @@ function ToastHost() {
 }
 
 export function AppShell() {
+  const { nameHandoff } = useUi()
   return (
     <div className="min-h-dvh">
       <a
@@ -136,7 +138,19 @@ export function AppShell() {
         <div className="flex items-center gap-3">
           <AppMark size={36} />
           <div>
-            <p className="font-display text-xl leading-6 font-bold">{config.appName}</p>
+            <p className="font-display text-xl leading-6 font-bold">
+              Diário do{' '}
+              {/* O layoutId só existe na passagem da entrada pro cabeçalho: assim o nome
+                  voa do centro pra cá, e nunca o contrário. */}
+              <motion.span
+                key={nameHandoff ? 'handoff' : 'still'}
+                layoutId={nameHandoff ? 'reader-name' : undefined}
+                className="inline-block"
+                transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
+              >
+                {config.readerName}
+              </motion.span>
+            </p>
             <SaveIndicator />
           </div>
         </div>

@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { config, getEdition } from '@/config'
 import { Button, Card, Eyebrow, NumberField, Sheet, Stat } from '@/components/ui'
 import { StoreLink } from '@/components/StoreLink'
+import { LastTime } from '@/features/LastTime'
 import { ReturningDoubts } from '@/features/ReturningDoubts'
 import { buyWarning } from '@/domain/collection'
 import { nowIso } from '@/domain/dates'
@@ -192,6 +193,7 @@ export function Hoje() {
       </header>
 
       <ReturningDoubts />
+      <LastTime />
 
       {caughtUp ? (
         <Card className="riveted pt-8">

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { editions } from '@/config'
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 const isoDate = z.iso.datetime({ offset: true })
 /** Dia local, YYYY-MM-DD. */
@@ -88,32 +88,80 @@ export const noteSchema = z.object({
   mark: markSchema,
 })
 
-export const stateV2Schema = stateV1Schema
+const stateV2Base = stateV1Schema.extend({
+  schemaVersion: z.literal(2),
+  doubts: z.array(doubtSchema),
+  notes: z.record(volumeKey, noteSchema),
+  /** Conquistas que ele já viu desbloquear (pra animar só uma vez). */
+  achievementsSeen: z.array(z.string().max(64)),
+})
+
+/** Coerência que o formato sozinho não garante (backup editado à mão, por exemplo). */
+function checkCoherence(
+  s: { editionId: string; reader: { currentVolume: number }; doubts: { id: string }[] },
+  ctx: z.RefinementCtx,
+) {
+  const edition = editions[s.editionId]
+  if (!edition) {
+    ctx.addIssue({ code: 'custom', path: ['editionId'], message: 'edição desconhecida' })
+    return
+  }
+  if (s.reader.currentVolume > edition.releasedUpTo) {
+    ctx.addIssue({ code: 'custom', path: ['reader', 'currentVolume'], message: 'fora da edição' })
+  }
+  const ids = new Set<string>()
+  for (const d of s.doubts) {
+    if (ids.has(d.id)) {
+      ctx.addIssue({ code: 'custom', path: ['doubts'], message: `id repetido: ${d.id}` })
+    }
+    ids.add(d.id)
+  }
+}
+
+export const stateV2Schema = stateV2Base.superRefine(checkCoherence)
+
+/** Versão dele de um resumo: tem prioridade sobre o padrão enquanto existir. */
+export const chapterEditSchema = z.object({
+  volume: z.number().int().min(1).max(999),
+  /** Posição do capítulo dentro do volume (0 = primeiro). */
+  index: z.number().int().min(0).max(99),
+  text: z.string().trim().min(1).max(2000),
+  at: isoDate,
+})
+
+export const settingsSchema = z.object({
+  /** Desliga os resumos de capítulo em todo lugar. */
+  hideSummaries: z.boolean(),
+  /** Entrada: automática (completa 1x por dia, curta depois), sempre curta, desligada. */
+  intro: z.enum(['auto', 'short', 'off']),
+  /** Fundo animado. */
+  atmosphere: z.boolean(),
+})
+
+export const introStateSchema = z.object({
+  /** Último dia local em que a entrada completa rodou. */
+  lastFullDay: day.optional(),
+  /** Volume recém-concluído, pra próxima entrada comemorar. Consumido uma vez. */
+  celebrateVolume: z.number().int().min(1).max(999).optional(),
+})
+
+export const stateV3Schema = stateV2Base
   .extend({
-    schemaVersion: z.literal(2),
-    doubts: z.array(doubtSchema),
-    notes: z.record(volumeKey, noteSchema),
-    /** Conquistas que ele já viu desbloquear (pra animar só uma vez). */
-    achievementsSeen: z.array(z.string().max(64)),
+    schemaVersion: z.literal(3),
+    /** Quantos capítulos ele marcou como lidos em cada volume (só o atual importa). */
+    chaptersRead: z.record(volumeKey, z.number().int().min(0).max(99)),
+    /** Resumos reescritos por ele, por id de capítulo. Ficam guardados mesmo se ele voltar o progresso. */
+    chapterEdits: z.record(z.string().regex(/^c(0-\d{2}|\d{1,3})$/), chapterEditSchema),
+    settings: settingsSchema,
+    intro: introStateSchema,
   })
-  // Coerência que o formato sozinho não garante (backup editado à mão, por exemplo).
-  .superRefine((s, ctx) => {
-    const edition = editions[s.editionId]
-    if (!edition) {
-      ctx.addIssue({ code: 'custom', path: ['editionId'], message: 'edição desconhecida' })
-      return
-    }
-    if (s.reader.currentVolume > edition.releasedUpTo) {
-      ctx.addIssue({ code: 'custom', path: ['reader', 'currentVolume'], message: 'fora da edição' })
-    }
-    const ids = new Set<string>()
-    for (const d of s.doubts) {
-      if (ids.has(d.id)) {
-        ctx.addIssue({ code: 'custom', path: ['doubts'], message: `id repetido: ${d.id}` })
-      }
-      ids.add(d.id)
-    }
-  })
+  .superRefine(checkCoherence)
+
+export const defaultSettings: z.infer<typeof settingsSchema> = {
+  hideSummaries: false,
+  intro: 'auto',
+  atmosphere: true,
+}
 
 export type Position = z.infer<typeof positionSchema>
 export type Mark = z.infer<typeof markSchema>
@@ -124,7 +172,11 @@ export type Written = z.infer<typeof writtenSchema>
 export type Doubt = z.infer<typeof doubtSchema>
 export type Reaction = (typeof reactions)[number]
 export type Note = z.infer<typeof noteSchema>
+export type ChapterEdit = z.infer<typeof chapterEditSchema>
+export type Settings = z.infer<typeof settingsSchema>
+export type IntroState = z.infer<typeof introStateSchema>
 export type DiaryStateV1 = z.infer<typeof stateV1Schema>
-export type DiaryState = z.infer<typeof stateV2Schema>
+export type DiaryStateV2 = z.infer<typeof stateV2Schema>
+export type DiaryState = z.infer<typeof stateV3Schema>
 
-export const currentSchema = stateV2Schema
+export const currentSchema = stateV3Schema

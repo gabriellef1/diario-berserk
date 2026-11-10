@@ -12,6 +12,15 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => Record
   {
     // v2: dúvidas, anotações por volume e conquistas vistas.
     1: (doc) => ({ ...doc, schemaVersion: 2, doubts: [], notes: {}, achievementsSeen: [] }),
+    // v3: capítulos lidos, resumos editados, configurações e estado da entrada.
+    2: (doc) => ({
+      ...doc,
+      schemaVersion: 3,
+      chaptersRead: {},
+      chapterEdits: {},
+      settings: { hideSummaries: false, intro: 'auto', atmosphere: true },
+      intro: {},
+    }),
   }
 
 export type ParseResult =

@@ -39,6 +39,10 @@ export const config = {
   chatgptUrl: 'https://chatgpt.com/',
   /** "Faltam ~N páginas" aparece abaixo deste limite. */
   lowPagesWarning: 40,
+  /** Dia do aniversário de namoro (MM-DD). A entrada mostra a mensagem nesse dia. */
+  anniversaryDay: '06-02',
+  /** Vazio = não aparece. */
+  anniversaryMessage: '',
 }
 
 export function getEdition(id: string): Edition {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { config, getEdition } from '@/config'
 import { ExportBackupButton, ImportBackupButton } from '@/components/BackupControls'
 import { Button, Card, PageHeader, Sheet } from '@/components/ui'
+import { SettingsCard } from '@/features/SettingsCard'
 import { useDiary, useDiaryState } from '@/store/DiaryContext'
 
 export function Sobre() {
@@ -28,6 +29,8 @@ export function Sobre() {
             <ImportBackupButton confirmReplace />
           </div>
         </Card>
+
+        <SettingsCard />
 
         <Card aria-labelledby="regra-title">
           <h2 id="regra-title" className="text-heading">

@@ -1,13 +1,16 @@
 import { getEdition } from '@/config'
 import { localDay } from './dates'
+import { chapterIsRead } from './chapters'
 import { hasHiddenParts, isVisible, laterMark, progressMark } from './gates'
 import {
   SCHEMA_VERSION,
+  defaultSettings,
   type CollectionItem,
   type DiaryState,
   type Doubt,
   type Position,
   type Reaction,
+  type Settings,
 } from './schema'
 
 export interface OnboardingInput {
@@ -41,6 +44,10 @@ export function createState(input: OnboardingInput): DiaryState {
     doubts: [],
     notes: {},
     achievementsSeen: [],
+    chaptersRead: {},
+    chapterEdits: {},
+    settings: { ...defaultSettings },
+    intro: {},
   }
 }
 
@@ -69,6 +76,22 @@ export type Action =
       at: string
     }
   | { type: 'markAchievementsSeen'; ids: string[] }
+  /** "Li esse capítulo": libera ele e os anteriores do volume atual. `n` = número impresso. */
+  | { type: 'markChapter'; volume: number; index: number; n: number }
+  /** Desmarca: esconde ele e os seguintes. `prevN` = número impresso do anterior (null se é o primeiro). */
+  | { type: 'unmarkChapter'; volume: number; index: number; prevN: number | null }
+  | {
+      type: 'editChapterSummary'
+      id: string
+      volume: number
+      index: number
+      n: number
+      text: string
+      at: string
+    }
+  | { type: 'resetChapterSummary'; id: string }
+  | { type: 'setSettings'; patch: Partial<Settings> }
+  | { type: 'introShown'; day: string; kind: 'full' | 'short' }
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
@@ -141,14 +164,16 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
         log.pagesTotal && pos?.kind === 'page' ? Math.max(0, log.pagesTotal - pos.value) : 0
       const volumes = { ...state.volumes, [key]: { ...log, finishedAt: action.at } }
       const readingLog = logPages(state.readingLog, action.at, Math.max(remaining, 1))
+      const intro = { ...state.intro, celebrateVolume: cur }
       if (cur >= edition.releasedUpTo) {
-        return { ...state, volumes, readingLog, reader: { ...state.reader, caughtUp: true } }
+        return { ...state, volumes, readingLog, intro, reader: { ...state.reader, caughtUp: true } }
       }
       const next = String(cur + 1)
       return {
         ...state,
         volumes: { ...volumes, [next]: { ...volumes[next], startedAt: action.at } },
         readingLog,
+        intro,
         reader: { ...state.reader, currentVolume: cur + 1, position: null, caughtUp: false },
       }
     }
@@ -165,9 +190,13 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       const key = String(volume)
       volumes[key] = { ...volumes[key], startedAt: volumes[key]?.startedAt ?? action.at }
       if (volumes[key].pagesTotal === undefined) delete volumes[key].pagesTotal
+      const chaptersRead: DiaryState['chaptersRead'] = {}
+      for (const [k, v] of Object.entries(state.chaptersRead))
+        if (Number(k) < volume) chaptersRead[k] = v
       return {
         ...state,
         volumes,
+        chaptersRead,
         reader: {
           ...state.reader,
           currentVolume: volume,
@@ -289,6 +318,65 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       const fresh = action.ids.filter((id) => !state.achievementsSeen.includes(id))
       if (fresh.length === 0) return state
       return { ...state, achievementsSeen: [...state.achievementsSeen, ...fresh] }
+    }
+    case 'markChapter': {
+      // Só no volume em andamento: os anteriores já estão todos liberados, os futuros nunca.
+      if (action.volume !== cur || state.reader.caughtUp || action.index < 0) return state
+      const key = String(cur)
+      const count = Math.max(state.chaptersRead[key] ?? 0, action.index + 1)
+      const pos = state.reader.position
+      // Marcar por aqui também adianta a posição, se ele acompanha por capítulo.
+      const reader =
+        state.reader.trackBy === 'chapter' && (pos?.kind !== 'chapter' || pos.value < action.n)
+          ? { ...state.reader, position: { kind: 'chapter' as const, value: action.n } }
+          : state.reader
+      if (count === (state.chaptersRead[key] ?? 0) && reader === state.reader) return state
+      return { ...state, reader, chaptersRead: { ...state.chaptersRead, [key]: count } }
+    }
+    case 'unmarkChapter': {
+      if (action.volume !== cur || state.reader.caughtUp || action.index < 0) return state
+      const key = String(cur)
+      const pos = state.reader.position
+      // A posição por capítulo também recua, senão ela liberaria o resumo de novo.
+      const reader =
+        pos?.kind === 'chapter' && (action.prevN === null || pos.value > action.prevN)
+          ? {
+              ...state.reader,
+              position:
+                action.prevN === null ? null : { kind: 'chapter' as const, value: action.prevN },
+            }
+          : state.reader
+      return { ...state, reader, chaptersRead: { ...state.chaptersRead, [key]: action.index } }
+    }
+    case 'editChapterSummary': {
+      const text = action.text.trim().slice(0, 2000)
+      if (!text || !chapterIsRead(state, action.volume, action.index, action.n)) return state
+      return {
+        ...state,
+        chapterEdits: {
+          ...state.chapterEdits,
+          [action.id]: { volume: action.volume, index: action.index, text, at: action.at },
+        },
+      }
+    }
+    case 'resetChapterSummary': {
+      if (!(action.id in state.chapterEdits)) return state
+      const { [action.id]: _gone, ...chapterEdits } = state.chapterEdits
+      return { ...state, chapterEdits }
+    }
+    case 'setSettings':
+      return { ...state, settings: { ...state.settings, ...action.patch } }
+    case 'introShown': {
+      // Registra ao começar (pular também conta) e consome a comemoração.
+      const { celebrateVolume: _c, ...rest } = state.intro
+      const intro = action.kind === 'full' ? { ...rest, lastFullDay: action.day } : rest
+      if (
+        state.intro.celebrateVolume === undefined &&
+        intro.lastFullDay === state.intro.lastFullDay
+      ) {
+        return state
+      }
+      return { ...state, intro }
     }
   }
 }

@@ -35,7 +35,7 @@ function iso(offset: number) {
 /** Estado v2 realista: lendo o volume 2, página 87, com 1 e 2 na estante. */
 function sampleState() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     editionId: 'panini-luxo',
     createdAt: iso(12),
     reader: {
@@ -109,6 +109,10 @@ function sampleState() {
       },
     },
     achievementsSeen: achievementIds,
+    chaptersRead: { '2': 1 },
+    chapterEdits: {},
+    settings: { hideSummaries: false, intro: 'off', atmosphere: true },
+    intro: {},
   }
 }
 
@@ -158,9 +162,12 @@ test.describe('screenshots', () => {
     await expect(page.getByRole('heading', { name: 'A estrada até aqui' })).toBeVisible()
     await shot(page, 'jornada')
 
-    await page.locator('li[data-volume="1"] button').click()
-    await expect(page.getByRole('dialog', { name: 'Volume 1' })).toBeVisible()
-    await shot(page, 'jornada-volume')
+    await page.locator('li[data-volume="2"] a').click()
+    await expect(page.getByRole('heading', { name: 'Volume 2', exact: true })).toBeVisible()
+    await expect(page.getByTestId('chapter').first()).toBeVisible()
+    await page.getByRole('button', { name: /Ver resumo/ }).click()
+    await expect(page.getByTestId('chapter-summary')).toBeVisible()
+    await shot(page, 'volume')
 
     await page.goto('./#/duvidas')
     await expect(page.getByTestId('doubt-item').first()).toBeVisible()

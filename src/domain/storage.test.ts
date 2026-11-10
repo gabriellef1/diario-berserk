@@ -53,10 +53,14 @@ describe('migração v1 -> v2', () => {
     expect(result.status).toBe('ok')
     if (result.status !== 'ok') return
     expect(result.state).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       doubts: [],
       notes: {},
       achievementsSeen: [],
+      chaptersRead: {},
+      chapterEdits: {},
+      settings: { hideSummaries: false, intro: 'auto', atmosphere: true },
+      intro: {},
       reader: { currentVolume: 3, position: { kind: 'page', value: 20 } },
       readingLog: { '2026-11-10': 8 },
     })
