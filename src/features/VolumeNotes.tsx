@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { Button, Eyebrow } from '@/components/ui'
 import { nowIso } from '@/domain/dates'
-import { visibleNote } from '@/domain/gates'
+import { isNoteHidden, visibleNote } from '@/domain/gates'
 import { reactions, type Reaction } from '@/domain/schema'
 import { IconFlame, ReactionIcon } from '@/icons/reactions'
 import { cn } from '@/lib/cn'
@@ -22,6 +22,13 @@ export function VolumeNotes({ volume }: { volume: number }) {
   const state = useDiaryState()
   // Gate: só a nota que ele pode ver agora.
   const note = visibleNote(state, volume)
+  if (isNoteHidden(state, volume)) {
+    return (
+      <p data-testid="note-hidden" className="mt-6 border-t border-line pt-5 text-sm text-ink-2">
+        Você já anotou algo sobre este volume num ponto mais à frente. Aparece quando chegar lá.
+      </p>
+    )
+  }
   // Remonta o formulário quando muda o volume ou a nota salva.
   return <NoteForm key={`${volume}-${note?.updatedAt ?? 'novo'}`} volume={volume} />
 }

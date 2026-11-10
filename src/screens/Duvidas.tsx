@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getEdition } from '@/config'
 import { Button, Card, PageHeader, Segmented, Sheet } from '@/components/ui'
 import { formatDate, nowIso } from '@/domain/dates'
-import { visibleDoubts } from '@/domain/gates'
+import { lockedDoubtIds, visibleDoubts } from '@/domain/gates'
 import type { Doubt, Mark } from '@/domain/schema'
 import { AskWithoutSpoiler } from '@/features/AskWithoutSpoiler'
 import { SelectField, TextArea } from '@/features/TextArea'
@@ -120,7 +120,16 @@ function QuickAsk() {
   )
 }
 
-function DoubtItem({ doubt, onAction }: { doubt: Doubt; onAction: (a: Action) => void }) {
+function DoubtItem({
+  doubt,
+  locked,
+  onAction,
+}: {
+  doubt: Doubt
+  /** Tem resposta escrita mais à frente: só dá pra perguntar, não mexer. */
+  locked: boolean
+  onAction: (a: Action) => void
+}) {
   const { dispatch } = useDiary()
   const answered = doubt.status === 'answered'
   return (
@@ -159,8 +168,14 @@ function DoubtItem({ doubt, onAction }: { doubt: Doubt; onAction: (a: Action) =>
         </div>
       )}
 
+      {locked && (
+        <p className="text-sm text-ink-2">
+          Você já escreveu algo sobre ela mais à frente. Aparece quando chegar lá.
+        </p>
+      )}
+
       <div className="mt-1 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        {answered ? (
+        {locked ? null : answered ? (
           <Button
             onClick={() =>
               dispatch(
@@ -177,10 +192,12 @@ function DoubtItem({ doubt, onAction }: { doubt: Doubt; onAction: (a: Action) =>
           </Button>
         )}
         <Button onClick={() => onAction('ask')}>Perguntar sem spoiler</Button>
-        {!answered && <Button onClick={() => onAction('remind')}>Mudar lembrete</Button>}
-        <Button variant="ghost" onClick={() => onAction('delete')}>
-          Apagar
-        </Button>
+        {!answered && !locked && <Button onClick={() => onAction('remind')}>Mudar lembrete</Button>}
+        {!locked && (
+          <Button variant="ghost" onClick={() => onAction('delete')}>
+            Apagar
+          </Button>
+        )}
       </div>
     </li>
   )
@@ -306,6 +323,7 @@ export function Duvidas() {
   const state = useDiaryState()
   // Gate: tudo que aparece aqui vem de visibleDoubts.
   const doubts = visibleDoubts(state)
+  const locked = lockedDoubtIds(state)
   const [filter, setFilter] = useState<Filter>('open')
   const [volume, setVolume] = useState('')
   const [active, setActive] = useState<{ id: string; action: Action } | null>(null)
@@ -386,6 +404,7 @@ export function Duvidas() {
                   <DoubtItem
                     key={d.id}
                     doubt={d}
+                    locked={locked.has(d.id)}
                     onAction={(action) => setActive({ id: d.id, action })}
                   />
                 ))}

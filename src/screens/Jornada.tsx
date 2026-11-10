@@ -280,7 +280,10 @@ export function Jornada() {
 
       {ahead.length > 0 && (
         <section className="mt-6" aria-labelledby="mais-a-frente">
-          <h3 id="mais-a-frente" className="mb-3 font-sans text-sm font-semibold tracking-normal text-ink-2">
+          <h3
+            id="mais-a-frente"
+            className="mb-3 font-sans text-sm font-semibold tracking-normal text-ink-2"
+          >
             Mais à frente
           </h3>
           <ul className="grid grid-cols-6 gap-1.5 sm:grid-cols-9" aria-label="Volumes bloqueados">

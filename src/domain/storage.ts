@@ -42,8 +42,37 @@ export function parseDocument(raw: unknown, migrate = migrations): ParseResult {
 export type LoadResult =
   | { status: 'empty' }
   | { status: 'ok'; state: DiaryState }
-  | { status: 'corrupt'; reason: string }
+  /** `raw` é o original ilegível; `preserved` diz se a cópia de segurança foi gravada. */
+  | { status: 'corrupt'; reason: string; raw: string; preserved: boolean }
   | { status: 'unavailable' }
+
+/** Grava sem lançar exceção (quota cheia, modo privado). */
+function trySet(s: Storage, key: string, value: string): boolean {
+  try {
+    s.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Guarda uma cópia do original ilegível antes de qualquer sobrescrita. */
+export function preserveCorrupt(raw: string): boolean {
+  try {
+    return trySet(window.localStorage, `${CORRUPT_PREFIX}${Date.now()}`, raw)
+  } catch {
+    return false
+  }
+}
+
+/** Só leitura: não depende de conseguir gravar (quota cheia não esconde os dados). */
+function readable(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 function storage(): Storage | null {
   try {
@@ -58,26 +87,32 @@ function storage(): Storage | null {
 }
 
 export function load(): LoadResult {
-  const s = storage()
+  const s = readable()
   if (!s) return { status: 'unavailable' }
-  const raw = s.getItem(STORAGE_KEY)
+  let raw: string | null
+  try {
+    raw = s.getItem(STORAGE_KEY)
+  } catch {
+    return { status: 'unavailable' }
+  }
   if (raw === null) return { status: 'empty' }
   let json: unknown
   try {
     json = JSON.parse(raw)
   } catch {
-    s.setItem(`${CORRUPT_PREFIX}${Date.now()}`, raw)
-    return { status: 'corrupt', reason: 'json' }
+    return { status: 'corrupt', reason: 'json', raw, preserved: preserveCorrupt(raw) }
   }
   const result = parseDocument(json)
   if (!result.ok) {
     // Nunca sobrescreve o original: guarda uma cópia antes de qualquer coisa.
-    s.setItem(`${CORRUPT_PREFIX}${Date.now()}`, raw)
-    return { status: 'corrupt', reason: result.reason }
+    return { status: 'corrupt', reason: result.reason, raw, preserved: preserveCorrupt(raw) }
   }
-  if (result.migratedFrom !== undefined) {
-    s.setItem(`${BACKUP_PREFIX}${result.migratedFrom}`, raw)
-    s.setItem(STORAGE_KEY, JSON.stringify(result.state))
+  // Migração: só regrava a chave principal se a cópia do original foi salva.
+  if (
+    result.migratedFrom !== undefined &&
+    trySet(s, `${BACKUP_PREFIX}${result.migratedFrom}`, raw)
+  ) {
+    trySet(s, STORAGE_KEY, JSON.stringify(result.state))
   }
   return { status: 'ok', state: result.state }
 }

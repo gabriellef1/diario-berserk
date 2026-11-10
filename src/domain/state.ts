@@ -1,6 +1,6 @@
 import { getEdition } from '@/config'
 import { localDay } from './dates'
-import { isVisible, laterMark, progressMark } from './gates'
+import { hasHiddenParts, isVisible, laterMark, progressMark } from './gates'
 import {
   SCHEMA_VERSION,
   type CollectionItem,
@@ -74,12 +74,15 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
-/** Só mexe em dúvidas que ele consegue ver agora. */
+/**
+ * Só mexe em dúvidas que ele consegue ver agora e que não guardam nada escrito
+ * mais à frente (senão a ação apagaria ou trocaria um texto que ele nem vê).
+ */
 function updateDoubt(state: DiaryState, id: string, fn: (d: Doubt) => Doubt): DiaryState {
   const p = progressMark(state)
   let changed = false
   const doubts = state.doubts.map((d) => {
-    if (d.id !== id || !isVisible(d.mark, p)) return d
+    if (d.id !== id || !isVisible(d.mark, p) || hasHiddenParts(d, p)) return d
     changed = true
     return fn(d)
   })
@@ -207,10 +210,15 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       const text = action.text.trim().slice(0, 1000)
       if (!text) return state
       return updateDoubt(state, action.id, (d) => {
-        const { remindAt: _r, promptedAtVolume: _p, ...rest } = d
-        return action.remindAt === undefined
-          ? { ...rest, text }
-          : { ...rest, text, remindAt: clamp(action.remindAt, 1, edition.totalVolumes) }
+        const { remindAt: _r, promptedAtVolume, ...rest } = d
+        // Texto editado agora pode conter o que ele sabe agora: a marca avança.
+        const base = { ...rest, text, mark: laterMark(d.mark, progressMark(state)) }
+        if (action.remindAt === undefined) return base
+        const remindAt = clamp(action.remindAt, 1, edition.totalVolumes)
+        // Mesmo lembrete: mantém o "ainda não" pra não voltar de novo no mesmo volume.
+        return remindAt === d.remindAt && promptedAtVolume !== undefined
+          ? { ...base, remindAt, promptedAtVolume }
+          : { ...base, remindAt }
       })
     }
     case 'answerDoubt': {
@@ -226,6 +234,7 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       return updateDoubt(state, action.id, (d) => ({ ...d, promptedAtVolume: cur }))
     case 'postponeDoubt':
       return updateDoubt(state, action.id, (d) => {
+        if (d.status !== 'open') return d
         const { promptedAtVolume: _p, ...rest } = d
         return {
           ...rest,
@@ -248,7 +257,9 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
     }
     case 'deleteDoubt': {
       const p = progressMark(state)
-      const doubts = state.doubts.filter((d) => d.id !== action.id || !isVisible(d.mark, p))
+      const doubts = state.doubts.filter(
+        (d) => d.id !== action.id || !isVisible(d.mark, p) || hasHiddenParts(d, p),
+      )
       return doubts.length === state.doubts.length ? state : { ...state, doubts }
     }
     case 'saveNote': {
@@ -257,8 +268,9 @@ export function reduce(state: DiaryState, action: Action): DiaryState {
       const key = String(action.volume)
       const p = progressMark(state)
       const prev = state.notes[key]
-      // Nota escondida (escrita mais à frente) é substituída, não mesclada.
-      const base = prev && isVisible(prev.mark, p) ? prev : undefined
+      // Nota escrita mais à frente: não deixa sobrescrever o que ele nem vê.
+      if (prev && !isVisible(prev.mark, p)) return state
+      const base = prev
       const text = action.text?.trim().slice(0, 4000)
       const note = {
         ...(action.rating !== undefined ? { rating: clamp(action.rating, 1, 5) } : {}),

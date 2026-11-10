@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DiaryState } from '@/domain/schema'
 import { reduce } from '@/domain/state'
-import { clearAll, load, save, STORAGE_KEY, type SaveResult } from '@/domain/storage'
+import {
+  clearAll,
+  load,
+  preserveCorrupt,
+  save,
+  STORAGE_KEY,
+  type SaveResult,
+} from '@/domain/storage'
 import { DiaryContext, type DiaryContextValue, type Toast } from './DiaryContext'
 
 let toastSeq = 0
@@ -14,6 +21,10 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   const [saveStatus, setSaveStatus] = useState<SaveResult | 'idle'>('idle')
   const [toast, setToast] = useState<Toast | null>(null)
   const stateRef = useRef(state)
+  // Original ilegível que ainda não tem cópia de segurança: bloqueia a sobrescrita.
+  const unpreserved = useRef(
+    initial.status === 'corrupt' && !initial.preserved ? initial.raw : null,
+  )
   useEffect(() => {
     stateRef.current = state
   }, [state])
@@ -22,6 +33,13 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   const commit = useCallback((next: DiaryState) => {
     stateRef.current = next
     setState(next)
+    if (unpreserved.current !== null) {
+      if (!preserveCorrupt(unpreserved.current)) {
+        setSaveStatus('error')
+        return
+      }
+      unpreserved.current = null
+    }
     setSaveStatus(save(next))
   }, [])
 

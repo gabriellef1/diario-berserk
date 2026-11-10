@@ -21,8 +21,11 @@ describe('isVisible', () => {
     expect(isVisible(mark(3, page(101)), mark(3, page(100)))).toBe(false)
   })
 
-  it('mesmo volume em unidades diferentes: o volume decide', () => {
-    expect(isVisible(mark(3, chapter(50)), mark(3, page(1)))).toBe(true)
+  it('mesmo volume em unidades diferentes: não se comparam, esconde até terminar o volume', () => {
+    expect(isVisible(mark(3, page(150)), mark(3, chapter(1)))).toBe(false)
+    expect(isVisible(mark(3, chapter(50)), mark(3, page(1)))).toBe(false)
+    expect(isVisible(mark(3, page(150)), { ...mark(3, chapter(1)), caughtUp: true })).toBe(true)
+    expect(isVisible(mark(3, page(150)), mark(4, chapter(1)))).toBe(true)
   })
 
   it('progresso sem posição esconde o que foi escrito num ponto marcado do mesmo volume', () => {

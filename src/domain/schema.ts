@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { editions } from '@/config'
 
 export const SCHEMA_VERSION = 2
 
@@ -87,13 +88,32 @@ export const noteSchema = z.object({
   mark: markSchema,
 })
 
-export const stateV2Schema = stateV1Schema.extend({
-  schemaVersion: z.literal(2),
-  doubts: z.array(doubtSchema),
-  notes: z.record(volumeKey, noteSchema),
-  /** Conquistas que ele já viu desbloquear (pra animar só uma vez). */
-  achievementsSeen: z.array(z.string().max(64)),
-})
+export const stateV2Schema = stateV1Schema
+  .extend({
+    schemaVersion: z.literal(2),
+    doubts: z.array(doubtSchema),
+    notes: z.record(volumeKey, noteSchema),
+    /** Conquistas que ele já viu desbloquear (pra animar só uma vez). */
+    achievementsSeen: z.array(z.string().max(64)),
+  })
+  // Coerência que o formato sozinho não garante (backup editado à mão, por exemplo).
+  .superRefine((s, ctx) => {
+    const edition = editions[s.editionId]
+    if (!edition) {
+      ctx.addIssue({ code: 'custom', path: ['editionId'], message: 'edição desconhecida' })
+      return
+    }
+    if (s.reader.currentVolume > edition.releasedUpTo) {
+      ctx.addIssue({ code: 'custom', path: ['reader', 'currentVolume'], message: 'fora da edição' })
+    }
+    const ids = new Set<string>()
+    for (const d of s.doubts) {
+      if (ids.has(d.id)) {
+        ctx.addIssue({ code: 'custom', path: ['doubts'], message: `id repetido: ${d.id}` })
+      }
+      ids.add(d.id)
+    }
+  })
 
 export type Position = z.infer<typeof positionSchema>
 export type Mark = z.infer<typeof markSchema>

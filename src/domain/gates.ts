@@ -23,10 +23,11 @@ export function isVisible(mark: Mark, progress: Mark): boolean {
   if (mark.caughtUp) return false
   const a = mark.position
   const b = progress.position
-  // Escrito num ponto marcado, mas ele não marcou onde está agora: esconde (na dúvida, protege).
-  if (a && !b) return false
-  // Sem posição na marca, ou em unidades diferentes: o volume decide.
-  if (a?.kind !== b?.kind || !a || !b) return true
+  // Escrito sem posição: o volume decide.
+  if (!a) return true
+  // Escrito num ponto marcado, mas agora sem posição ou em outra unidade
+  // (página x capítulo não se comparam): esconde até ele terminar o volume.
+  if (a.kind !== b?.kind) return false
   return a.value <= b.value
 }
 
@@ -77,6 +78,28 @@ export function visibleDoubts(state: DiaryState): Doubt[] {
     })
 }
 
+/** A dúvida está visível mas tem resposta (ou resposta colada) escrita mais à frente. */
+export function hasHiddenParts(doubt: Doubt, progress: Mark): boolean {
+  return (
+    (doubt.answer !== undefined && !isVisible(doubt.answer.mark, progress)) ||
+    (doubt.gptAnswer !== undefined && !isVisible(doubt.gptAnswer.mark, progress))
+  )
+}
+
+/** Ids de dúvidas visíveis que guardam algo escrito mais à frente (não dá pra mexer). */
+export function lockedDoubtIds(state: DiaryState): Set<string> {
+  const p = progressMark(state)
+  return new Set(
+    state.doubts.filter((d) => isVisible(d.mark, p) && hasHiddenParts(d, p)).map((d) => d.id),
+  )
+}
+
+/** Existe nota deste volume escrita num ponto que ele ainda não alcançou. */
+export function isNoteHidden(state: DiaryState, volume: number): boolean {
+  const note = state.notes[String(volume)]
+  return note !== undefined && !isVisible(note.mark, progressMark(state))
+}
+
 /** Nota de um volume, só se o volume e o ponto da escrita estiverem liberados. */
 export function visibleNote(state: DiaryState, volume: number): Note | undefined {
   if (!isVolumeUnlocked(volume, state)) return undefined
@@ -91,8 +114,11 @@ export function visibleNote(state: DiaryState, volume: number): Note | undefined
  */
 export function returningDoubts(state: DiaryState): Doubt[] {
   const cur = state.reader.currentVolume
+  // Dúvida com resposta escrita mais à frente não volta: ele já respondeu, só não lembra.
+  const locked = lockedDoubtIds(state)
   return visibleDoubts(state).filter(
     (d) =>
+      !locked.has(d.id) &&
       d.status === 'open' &&
       d.remindAt !== undefined &&
       d.remindAt <= cur &&

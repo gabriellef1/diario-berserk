@@ -68,7 +68,7 @@ describe('migração v1 -> v2', () => {
 describe('load com dado ruim', () => {
   it('JSON corrompido: corrupt, cópia em corrompido:*, sem apagar o original', () => {
     localStorage.setItem(STORAGE_KEY, '{"schemaVersion": 2, quebrado')
-    expect(load()).toEqual({ status: 'corrupt', reason: 'json' })
+    expect(load()).toMatchObject({ status: 'corrupt', reason: 'json', preserved: true })
     expect(localStorage.getItem(STORAGE_KEY)).toBe('{"schemaVersion": 2, quebrado')
     const copies = storedKeys().filter((k) => k.startsWith(CORRUPT_PREFIX))
     expect(copies).toHaveLength(1)
@@ -78,7 +78,7 @@ describe('load com dado ruim', () => {
   it('versão futura (99): corrupt/future sem sobrescrever', () => {
     const raw = JSON.stringify({ ...makeState(), schemaVersion: 99 })
     localStorage.setItem(STORAGE_KEY, raw)
-    expect(load()).toEqual({ status: 'corrupt', reason: 'future' })
+    expect(load()).toMatchObject({ status: 'corrupt', reason: 'future', preserved: true })
     expect(localStorage.getItem(STORAGE_KEY)).toBe(raw)
     expect(storedKeys().some((k) => k.startsWith(CORRUPT_PREFIX))).toBe(true)
   })

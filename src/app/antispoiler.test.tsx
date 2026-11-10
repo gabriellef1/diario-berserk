@@ -56,7 +56,7 @@ describe('antispoiler na interface', () => {
     window.location.hash = '#/jornada'
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: /Volume 3/ }))
-    expect(await screen.findByTestId('note-form')).toBeInTheDocument()
+    expect(await screen.findByTestId('note-hidden')).toBeInTheDocument()
     const fields = [
       ...document.querySelectorAll<HTMLTextAreaElement | HTMLInputElement>('textarea, input'),
     ]
